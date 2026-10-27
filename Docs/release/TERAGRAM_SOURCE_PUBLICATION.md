@@ -15,4 +15,4 @@ The following eight shared compatibility/build files are required by the current
 
 No SDK project, manifest, Gradle build configuration, Kotlin/Java source, keystore, credential, session database or personal media is proposed for publication. This approval does not authorize Windows/Android builds or releases.
 
-Status: awaiting owner decision on the eight shared compatibility files.
+Status: the owner chose the macOS binary release first (2026-10-27). Approval of the eight shared compatibility files and the full source import is deferred. Windows/Android builds remain postponed.
