@@ -2512,6 +2512,11 @@ impl Driver {
                 cache
                     .read(&account, None, &source(live.clone()), false, false)
                     .await?;
+                // Model the desktop keeping its just-opened view active after
+                // bootstrap, rather than counting slow fixture I/O as idle time.
+                if !cache.touch(&account, None)? {
+                    return Err("Inventory view disappeared after bootstrap".into());
+                }
                 let unchanged = cache
                     .poll_recent(|_, _| {
                         let source = source(live.clone());
@@ -2523,9 +2528,18 @@ impl Driver {
                     .await
                     .map_err(error)?;
                 if request["consumerBeforePoll"].as_bool().unwrap_or(false) {
+                    // A REST/DAV read must not consume the notification of an
+                    // active desktop view. Keep that view active explicitly;
+                    // the accelerated retention window can expire during I/O.
+                    if !cache.touch(&account, None)? {
+                        return Err("Active inventory view disappeared before API read".into());
+                    }
                     cache
                         .read(&account, None, &source(live.clone()), false, false)
                         .await?;
+                    if !cache.touch(&account, None)? {
+                        return Err("Active inventory view disappeared after API read".into());
+                    }
                 }
                 let changed = cache
                     .poll_recent(|_, _| {
@@ -2533,7 +2547,14 @@ impl Driver {
                         async move { Ok(source) }
                     })
                     .await;
-                tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                // With an API consumer, activity was renewed immediately before
+                // the poll. Wait a full retention interval to test a cold read.
+                let idle = if request["consumerBeforePoll"].as_bool().unwrap_or(false) {
+                    timing.retention + std::time::Duration::from_millis(100)
+                } else {
+                    std::time::Duration::from_millis(1500)
+                };
+                tokio::time::sleep(idle).await;
                 tokio::fs::copy(child(&self.root, text(&request, "cold")?)?, &live)
                     .await
                     .map_err(error)?;

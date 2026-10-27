@@ -3643,17 +3643,28 @@ fn an_api_consumer_cannot_consume_the_desktop_inventory_change_notification() {
     ] {
         fixture.write(
             path,
-            serde_json::to_vec(&json!({"highwater":1,"rows":[{"id":1,"name":name}]})).unwrap(),
+            // Bootstrap and the first poll deliberately exceed the fixture's
+            // short retention window before the API consumer runs. The desktop
+            // remains active; its notification baseline must stay intact.
+            serde_json::to_vec(&json!({
+                "highwater":1,
+                "historyDelayMs":if path == "initial.json" { 1100 } else { 0 },
+                "rows":[{"id":1,"name":name}],
+            }))
+            .unwrap(),
         );
     }
     let mut app = Backend::start(&fixture.0);
     app.ok(json!({"command":"seed_account","owner":101}));
     let result=app.ok(json!({"command":"inventory_timer_lifecycle","owner":"101","initial":"initial.json","changed":"changed.json","cold":"cold.json","consumerBeforePoll":true}));
+    assert_eq!(result["unchangedEvents"], 0);
     assert_eq!(
         result["changedEvents"], 1,
         "API read consumed the broadcast serial"
     );
     assert_eq!(result["changedName"], "Renamed elsewhere");
+    assert_eq!(result["coldName"], "Idle");
+    assert_eq!(result["coldLookupBatches"], 0);
     app.stop();
 }
 
