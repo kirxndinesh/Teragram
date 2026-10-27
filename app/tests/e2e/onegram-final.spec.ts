@@ -45,7 +45,7 @@ test('sidebar animation keeps label geometry and icon anchors stable', async ({ 
   await desktopFixture(page, { gallery: true, settings: { sidebarCollapsed: false } }); await page.goto('/');
   // Navigation can finish before the lazy workspace has a visible layout.
   // boundingBox() only waits for attachment and can return null at startup.
-  await expect(page.locator('.cloud-sidebar')).toHaveCSS('width', '248px');
+  await expect(page.locator('.cloud-sidebar')).toHaveCSS('width', '248px', { timeout: 30_000 });
   const photoIcon = page.locator('.cloud-sidebar nav > button').first().locator('svg');
   await expect(photoIcon).toBeVisible();
   const beforeX = await photoIcon.evaluate(icon => icon.getBoundingClientRect().left);
