@@ -1,0 +1,39 @@
+name: Publish verified Teragram Windows preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/windows-sidebar-test-readiness]
+    paths:
+      - '.github/workflows/publish-teragram-windows.yml'
+      - 'scripts/publish-teragram-windows.py'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-teragram-v1.0.0-windows-preview
+  cancel-in-progress: false
+
+jobs:
+  publish-verified-preview:
+    if: github.repository == 'kirxndinesh/Teragram' && github.ref == 'refs/heads/fix/windows-sidebar-test-readiness'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check source publication and workflow policy
+        run: |
+          node scripts/check-android-publication.cjs --tracked-only --strict
+          node scripts/check-workflow-pins.cjs
+          node scripts/release-tag-policy.cjs --tag v1.0.0-windows-preview --app-root app
+      - name: Verify the successful Windows run, immutable artifact and installer checksum
+        run: python3 scripts/publish-teragram-windows.py prepare
+      - name: Upload checked assets and publish the Windows preview
+        run: python3 scripts/publish-teragram-windows.py publish
