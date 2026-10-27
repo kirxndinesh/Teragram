@@ -1,0 +1,161 @@
+import { useLayoutEffect, useState } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Filter, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useSettings } from '../../../context/SettingsContext';
+import { Button, IconButton, MenuPanel, Select } from '../../ui';
+import { DEFAULT_SEARCH_FILTERS, type FileSearchFilters } from '../../../services/fileSearch';
+import type { SortDirection, SortField } from '../dashboard/FileExplorer';
+import { useTopBarController } from '../dashboard/useTopBarController';
+import i18n from '../../../i18n';
+interface Props {
+  viewMode: 'grid' | 'list'; cardScale: number; onCardScaleChange: (scale: number) => void;
+  sortField: SortField; sortDirection: SortDirection; onSortChange: (field: SortField) => void;
+  searchFilters: FileSearchFilters; onSearchFiltersChange: (filters: FileSearchFilters) => void;
+}
+export function WorkspaceControls({ viewMode, cardScale, onCardScaleChange, sortField, sortDirection, onSortChange, searchFilters, onSearchFiltersChange }: Props) {
+  const { t } = useTranslation();
+    const { settings } = useSettings();
+    const {
+        showViewOptions,
+        showSearchFilters,
+        viewRef,
+        filterRef,
+        filterButtonRef,
+        closeSearchFilters,
+        onFilterKeyDown,
+        toggleSearchFilters,
+        toggleViewOptions,
+    } = useTopBarController(settings.proxyEnabled, settings.proxyLiveStateEnabled);
+    const [filterPanelHeight, setFilterPanelHeight] = useState(400);
+    useLayoutEffect(() => {
+        if (!showSearchFilters) return;
+        const update = () => setFilterPanelHeight(Math.max(120, window.innerHeight - (filterRef.current?.getBoundingClientRect().bottom ?? 300) - 16));
+        update();
+        window.addEventListener('resize', update);
+        return () => window.removeEventListener('resize', update);
+    }, [showSearchFilters, filterRef]);
+    const hasSearchFilters = Object.entries(searchFilters).some(([key, value]) => value !== DEFAULT_SEARCH_FILTERS[key as keyof FileSearchFilters]);
+  return <div className="cloud-workspace-actions" onClick={event => event.stopPropagation()} onKeyDown={event => { if ((event.target as HTMLElement).closest('button, select') && !event.metaKey && !event.ctrlKey && !event.altKey) event.stopPropagation(); }}>
+                        <div ref={filterRef} className="relative shrink-0" onKeyDown={onFilterKeyDown}>
+                            <IconButton
+                                ref={filterButtonRef}
+                                label={t('common.search_filters')}
+                                size="lg"
+                                aria-haspopup="dialog"
+                                aria-controls={showSearchFilters ? 'search-filter-panel' : undefined}
+                                data-active={hasSearchFilters}
+                                onClick={toggleSearchFilters}
+                                aria-expanded={showSearchFilters}
+                                className="search-filter-trigger"
+                            >
+                                <Filter className="h-3.5 w-3.5" />
+                            </IconButton>
+                            {showSearchFilters && (
+                                <div id="search-filter-panel" style={{ maxHeight: filterPanelHeight }} role="dialog" aria-label={t('common.search_filters')} className="quiet-menu search-filter-panel absolute end-0 top-full z-50 mt-2">
+                                    <div className="flex items-center justify-between border-b border-app-border-subtle px-4 py-2">
+                                        <span className="text-ui font-semibold text-app-text">{t('common.search_filters')}</span>
+                                        <IconButton size="xs" label={t('common.close')} onClick={closeSearchFilters}><X className="h-3.5 w-3.5" /></IconButton>
+                                    </div>
+                                    <div className="grid gap-3 p-4">
+                                        <label className="search-filter-field text-xs font-medium text-app-text-secondary">{i18n.t('ui_copy.search_scope')}
+                                            <Select value={searchFilters.scope} onChange={(event) => onSearchFiltersChange({ ...searchFilters, scope: event.target.value as FileSearchFilters['scope'] })} className="search-filter-select">
+                                                <option value="folder">{i18n.t('ui_copy.current_scope')}</option>
+                                                <option value="all">{i18n.t('ui_copy.global_scope')}</option>
+                                            </Select>
+                                        </label>
+                                        <label className="search-filter-field text-xs font-medium text-app-text-secondary">{t('workspace.file_type')}
+                                            <Select value={searchFilters.type} onChange={(event) => onSearchFiltersChange({ ...searchFilters, type: event.target.value as FileSearchFilters['type'] })} className="search-filter-select">
+                                                <option value="all">{i18n.t("workspace.types.all")}</option><option value="image">{i18n.t('workspace.types.image')}</option><option value="video">{i18n.t('workspace.types.video')}</option><option value="audio">{i18n.t('workspace.types.audio')}</option><option value="document">{i18n.t("workspace.types.document")}</option><option value="archive">{i18n.t("workspace.types.archive")}</option><option value="other">{t('workspace.types.other')}</option>
+                                            </Select>
+                                        </label>
+                                        <label className="search-filter-field text-xs font-medium text-app-text-secondary">{i18n.t("common.size")}
+                                            <Select value={searchFilters.size} onChange={(event) => onSearchFiltersChange({ ...searchFilters, size: event.target.value as FileSearchFilters['size'] })} className="search-filter-select">
+                                                <option value="any">{t('workspace.sizes.any')}</option><option value="small">{i18n.t("workspace.sizes.small")}</option><option value="medium">{i18n.t("workspace.sizes.medium")}</option><option value="large">{t('workspace.sizes.large')}</option>
+                                            </Select>
+                                        </label>
+                                        <label className="search-filter-field text-xs font-medium text-app-text-secondary">{i18n.t("common.date")}
+                                            <Select value={searchFilters.date} onChange={(event) => onSearchFiltersChange({ ...searchFilters, date: event.target.value as FileSearchFilters['date'] })} className="search-filter-select">
+                                                <option value="any">{t('workspace.dates.any')}</option><option value="7d">{t('workspace.dates.7d')}</option><option value="30d">{t('workspace.dates.30d')}</option><option value="1y">{t('workspace.dates.1y')}</option>
+                                            </Select>
+                                        </label>
+                                        <label className="search-filter-field text-xs font-medium text-app-text-secondary">{t('workspace.protection')}
+                                            <Select aria-label={t('workspace.protection')} value={searchFilters.protection ?? 'any'} onChange={event => onSearchFiltersChange({ ...searchFilters, protection: event.target.value as FileSearchFilters['protection'] })} className="search-filter-select">
+                                                <option value="any">{t('common.all')}</option><option value="plain">{t('workspace.protection_plain')}</option><option value="protected">{t('settings.protected')}</option><option value="locked">{t('workspace.protection_locked')}</option><option value="unlocked">{t('workspace.protection_unlocked')}</option>
+                                            </Select>
+                                        </label>
+                                    </div>
+                                    <div className="border-t border-app-border-subtle p-3">
+                                        <Button className="w-full" onClick={() => onSearchFiltersChange(DEFAULT_SEARCH_FILTERS)}>{i18n.t('ui_copy.reset_filters')}</Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="relative" ref={viewRef}>
+                            <IconButton
+                                label="Sort files"
+                                onClick={toggleViewOptions}
+                                aria-expanded={showViewOptions}
+                                className={showViewOptions ? 'bg-app-selected text-app-accent' : ''}
+                            >
+                                <ArrowUpDown className="h-3.5 w-3.5" />
+                            </IconButton>
+                            {showViewOptions && (
+                                <MenuPanel className="absolute end-0 top-9 z-50 w-64">
+                                    <div className="px-2 pb-2 pt-1 text-badge font-medium text-app-text-tertiary">{i18n.t('ui_copy.sort_files')}</div>
+                                    <div className="grid grid-cols-3 gap-1" role="group" aria-label={i18n.t('ui_copy.sort_files')}>
+                                        {(['name', 'size', 'date'] as const).map((field) => (
+                                            <button
+                                                key={field}
+                                                type="button"
+                                                onClick={() => onSortChange(field)}
+                                                className={`quiet-control flex h-8 min-w-0 items-center justify-center gap-1 px-1.5 text-metadata font-medium ${sortField === field ? 'bg-app-selected text-app-accent' : 'text-app-text-secondary hover:text-app-text'}`}
+                                            >
+                                                <span className="truncate">{t(`common.${field}`)}</span>
+                                                {sortField === field && (sortDirection === 'asc'
+                                                    ? <ArrowUp className="h-3 w-3 shrink-0" />
+                                                    : <ArrowDown className="h-3 w-3 shrink-0" />)}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {viewMode === 'grid' && (
+                                        <>
+                                            <div className="my-1 h-px bg-app-border-subtle" />
+                                            <div className="flex h-8 items-center gap-1 px-1">
+                                                <IconButton
+                                                    size="xs"
+                                                    label="Smaller thumbnails"
+                                                    onClick={() => onCardScaleChange(Math.max(0.5, cardScale - 0.25))}
+                                                    disabled={cardScale <= 0.5}
+                                                >
+                                                    <ZoomOut className="h-3.5 w-3.5" />
+                                                </IconButton>
+                                                <input
+                                                    type="range"
+                                                    min="0.5"
+                                                    max="2"
+                                                    step="0.25"
+                                                    value={cardScale}
+                                                    onChange={(event) => onCardScaleChange(parseFloat(event.target.value))}
+                                                    className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-app-border [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-app-accent"
+                                                    aria-label={i18n.t('ui_copy.thumbnail_size')}
+                                                />
+                                                <IconButton
+                                                    size="xs"
+                                                    label="Larger thumbnails"
+                                                    onClick={() => onCardScaleChange(Math.min(2, cardScale + 0.25))}
+                                                    disabled={cardScale >= 2}
+                                                >
+                                                    <ZoomIn className="h-3.5 w-3.5" />
+                                                </IconButton>
+                                                <span className="w-9 text-end text-badge tabular-nums text-app-text-tertiary">{Math.round(cardScale * 100)}%</span>
+                                            </div>
+                                        </>
+                                    )}
+                                </MenuPanel>
+                            )}
+                        </div>
+
+  </div>;
+}

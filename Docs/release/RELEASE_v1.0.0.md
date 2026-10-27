@@ -38,8 +38,3 @@ Obtain your own Telegram API ID/hash from [my.telegram.org](https://my.telegram.
 - Optimized macOS application bundle built locally. Browser tests control native/Telegram boundaries; they do not certify every real Telegram account, codec or network.
 
 Developed by **Kiran Dinesh (@kirxndinesh)**. [Repository](https://github.com/kirxndinesh/Teragram) · [Issues](https://github.com/kirxndinesh/Teragram/issues)
-
-
-### Source publication status
-
-This initial preview release publishes the macOS application and branded documentation. The full tested source snapshot remains staged locally pending the owner's explicit approval of eight shared compatibility files required by the repository publication policy. The automatically generated GitHub source archives currently contain documentation, not the full app source.

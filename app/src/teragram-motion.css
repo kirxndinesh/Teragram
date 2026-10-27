@@ -1,0 +1,101 @@
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cloud-sidebar { transition: width 260ms var(--ease-in-out-smooth); }
+.cloud-brand { gap: 10px; }
+.cloud-brand img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.cloud-brand strong { font-size: 20px; font-weight: 600; transition: opacity 120ms ease, transform 220ms var(--ease-out-expo); }
+.cloud-sidebar.is-collapsed .cloud-brand strong { opacity: 0; transform: translateX(-6px); }
+.cloud-view-transition { min-width: 0; animation: teragram-view-in 200ms var(--ease-out-expo) both; }
+@keyframes teragram-view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.cloud-tree-shell { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 220ms var(--ease-in-out-smooth), opacity 180ms ease; }
+.cloud-tree-shell.is-open { grid-template-rows: 1fr; opacity: 1; }
+.cloud-tree-clip { overflow: hidden; min-height: 0; }
+.cloud-folder-chevron svg { transition: transform 220ms var(--ease-in-out-smooth); transform: rotate(-90deg); }
+.cloud-folder-chevron[aria-expanded="true"] svg { transform: rotate(0); }
+.cloud-masonry-column { min-width: 0; }
+.cloud-media-tile { transform-origin: top left; animation: teragram-card-in 240ms var(--ease-out-expo) both; }
+.cloud-media-tile.is-restored { animation: none; }
+@keyframes teragram-card-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+.cloud-media-open img { opacity: 0; transition: opacity 240ms var(--ease-out-expo), transform 280ms var(--ease-out-expo); }
+.cloud-media-tile.is-ready .cloud-media-open img { opacity: 1; }
+.cloud-media-tile:hover .cloud-media-open img { transform: scale(1.02); }
+.cloud-media-caption, .cloud-media-checkbox, .cloud-media-scrim { transition: opacity 180ms ease; }
+.cloud-new-popover, .cloud-connection-menu[open] .cloud-connection-popover,
+.cloud-workspace-control[open] > div, .cloud-storage-popover, .cloud-filter-popover,
+.cloud-sort-popover, .cloud-allocated-dialog, .movie-popover {
+  animation: teragram-popover-in 180ms var(--ease-out-expo) both; transform-origin: top right;
+}
+@keyframes teragram-popover-in { from { opacity: 0; transform: scale(.95) translateY(-6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.cloud-sidebar button, .cloud-header button, .cloud-workspace button,
+.cloud-connection-popover button, .teragram-repository {
+  transition: background-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.cloud-sidebar button:active, .cloud-header button:active,
+.cloud-workspace button:not(.cloud-media-open):active, .teragram-repository:active { transform: scale(.97); }
+.teragram-repository { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border: 1px solid var(--border-color, #444746); border-radius: 10px; color: var(--accent-color); }
+.teragram-repository:hover { background: var(--accent-tint); }
+@media (prefers-reduced-motion: reduce) {
+  .cloud-sidebar, .cloud-sidebar *, .cloud-workspace *, .cloud-header *,
+  .cloud-connection-popover, .teragram-repository, .movie-popover {
+    animation: none !important; transition: none !important;
+  }
+}
+.cloud-new-options, .search-filter-panel, .quiet-menu { animation: teragram-popover-in 180ms var(--ease-out-expo) both; transform-origin: top right; }
+.cloud-new-options { transform-origin: top left; }
+@media (prefers-reduced-motion: reduce) { .cloud-new-options, .search-filter-panel, .quiet-menu { animation: none !important; } }
+/* Explicit rail width prevents auto margins from following each animation frame. */
+.cloud-sidebar.is-collapsed .cloud-sidebar-surface > nav { width: 68px; min-width: 68px; }
+.cloud-sidebar .cloud-nav-item, .cloud-sidebar .cloud-channel-list > .quiet-control { position: relative; }
+.cloud-sidebar.is-collapsed .cloud-brand strong { visibility: visible; }
+.cloud-sidebar.is-collapsed .cloud-nav-item > span,
+.cloud-sidebar.is-collapsed .cloud-channel-list > .quiet-control > .text-start {
+  display: block; position: absolute; left: 46px; opacity: 0; visibility: visible; pointer-events: none;
+}
+.cloud-tree-shell { visibility: hidden; transition: grid-template-rows 220ms var(--ease-in-out-smooth), opacity 180ms ease, visibility 0s 220ms; }
+.cloud-tree-shell.is-open { visibility: visible; transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) { .cloud-tree-shell { transition: none !important; } }
+.movie-control-suite details[open] > .movie-menu { animation: teragram-popover-in 180ms var(--ease-out-expo) both; transform-origin: bottom right; }
+@media (prefers-reduced-motion: reduce) { .movie-control-suite details[open] > .movie-menu { animation: none !important; } }
+.cloud-new-menu > summary, .cloud-connection-menu > summary { transition: transform 120ms ease, background-color 150ms ease; }
+.cloud-new-menu > summary:active, .cloud-connection-menu > summary:active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) { .cloud-new-menu > summary, .cloud-connection-menu > summary { transition: none !important; } }
+/* Trailing tree actions keep leading icons on one vertical axis. */
+.cloud-sidebar .cloud-nav-item { padding-left: 16px; }
+.cloud-tree-row { position: relative; margin-top: 18px; }
+.cloud-tree-row > .cloud-nav-item { padding-right: 40px; }
+.cloud-tree-chevron { width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--one-secondary); }
+.cloud-tree-row .cloud-tree-chevron { position: absolute; right: 8px; top: 6px; }
+.cloud-tree-chevron:hover { background: var(--color-app-hover); }
+.cloud-tree-chevron svg { transition: transform 220ms var(--ease-in-out-smooth); transform: rotate(-90deg); }
+.cloud-tree-chevron[aria-expanded=true] svg { transform: rotate(0); }
+.cloud-tree-row .cloud-folder-chevron { left: auto; }
+.cloud-sidebar.is-collapsed .cloud-tree-row { width: 44px; margin: 4px auto; }
+.cloud-sidebar.is-collapsed .cloud-tree-row > .cloud-nav-item { padding: 0; }
+.cloud-sidebar.is-collapsed .cloud-tree-chevron, .cloud-sidebar.is-collapsed .cloud-nav-item > .cloud-tree-chevron { display: none; }
+.cloud-sidebar.is-collapsed .cloud-tree-row > .cloud-nav-item { margin: 0; }
+.cloud-workspace-toolbar { align-items: center; padding: 4px 0; overflow: visible; }
+.cloud-view-toggle { height: auto; min-height: 36px; overflow: visible; border: none; outline: none; box-shadow: none; background: transparent; }
+.cloud-view-controls .cloud-workspace-icon, .cloud-view-controls .quiet-icon-button,
+.cloud-view-controls .cloud-workspace-actions > div > button, .cloud-view-toggle > button {
+  width: 36px; height: 36px; min-height: 36px; border-radius: 10px; border: none; box-shadow: none; box-sizing: border-box;
+}
+.cloud-view-toggle button + button { border-inline-start: none; }
+.preview-outgoing { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; transition: opacity 180ms var(--ease-out-expo); }
+.is-image-preview .preview-original { transition: opacity 180ms var(--ease-out-expo), transform 180ms var(--ease-out-expo); }
+@media(prefers-reduced-motion:reduce) { .cloud-tree-chevron svg, .preview-outgoing { transition: none !important; } }
+.cloud-sidebar-surface > nav { padding-inline: 8px; }
+.cloud-sidebar.is-collapsed .cloud-sidebar-surface > nav { padding-inline: 12px; }
+.cloud-folder-overview-toolbar { justify-content: flex-end; align-items: center; gap: 8px; padding: 4px 0; margin-bottom: 20px; overflow: visible; }
+.cloud-sidebar .cloud-nav-item > .cloud-tree-chevron { width: 24px; min-width: 24px; height: 24px; padding: 0; }
+.cloud-sidebar .cloud-tree-row .cloud-tree-chevron { opacity: 0; pointer-events: none; transition: opacity 150ms ease; }
+.cloud-tree-row:hover .cloud-tree-chevron, .cloud-tree-row:focus-within .cloud-tree-chevron { opacity: 1; pointer-events: auto; }
+.cloud-quick-navigation [aria-expanded=true] .cloud-tree-chevron svg { transform: rotate(0); }
+.cloud-workspace-icon:hover { color: var(--color-app-text); }
+.transfer-banner { animation: transfer-in 220ms var(--ease-out-expo) both; }
+.transfer-banner.is-exiting { animation: transfer-out 220ms ease-in both; pointer-events: none; }
+@keyframes transfer-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes transfer-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(16px); } }
+@media(prefers-reduced-motion:reduce) { .transfer-banner, .transfer-banner.is-exiting { animation: none; } }

@@ -1,8 +1,8 @@
-# Teragram macOS source publication review
+# Teragram desktop source publication review
 
-The new repository will contain a clean source snapshot, without the old repository history. Native Android projects, generated assets, signing files, Android packaging scripts and Android screenshots remain local.
+The repository contains a clean source snapshot, without the old repository history. Native Android projects, generated assets, signing files, Android packaging scripts and Android screenshots remain local.
 
-The following eight shared compatibility/build files are required by the current desktop source or its verification scripts. The existing publication policy requires the repository owner to explicitly approve these paths as shared files before publication:
+The following eight shared compatibility/build files are required by the current desktop source or its verification scripts. The owner approved their inclusion by requesting the source necessary for Windows development after the eight-file review:
 
 - `app/src-tauri/src/android_security.rs` — desktop no-op command implementations alongside guarded mobile implementations.
 - `app/src-tauri/src/jni_cache.rs` — module referenced by the shared native application.
@@ -13,6 +13,6 @@ The following eight shared compatibility/build files are required by the current
 - `app/src/services/androidTransferPolicy.ts` — imported by the shared download hook.
 - `scripts/generate-gradle-sbom.cjs` — referenced by the existing dependency-assurance E2E journey.
 
-No SDK project, manifest, Gradle build configuration, Kotlin/Java source, keystore, credential, session database or personal media is proposed for publication. This approval does not authorize Windows/Android builds or releases.
+No SDK project, manifest, Gradle build configuration, Kotlin/Java source, keystore, credential, session database or personal media is proposed for publication. The owner authorized the Windows development source handoff. Android builds/releases remain deferred; Windows binary verification is to continue on the owner's Windows PC.
 
-Status: the owner chose the macOS binary release first (2026-10-27). Approval of the eight shared compatibility files and the full source import is deferred. Windows/Android builds remain postponed.
+Status: approved for the Windows source handoff on 2026-10-27. The eight paths are now classified as permitted shared files in `dependency-policy/android-publication-review.json`. Other Android-specific paths remain unapproved and excluded from the published snapshot.

@@ -95,3 +95,15 @@ The new private `kirxndinesh/Teragram` repository was created at the owner's req
 
 
 The owner chose macOS publication first. The private repository now contains branded documentation and a published `v1.0.0-macos-preview` release with ARM64 DMG, app ZIP, PNG/SVG logos and SHA-256 sums. The eight shared compatibility source files remain unapproved; the full source snapshot stays local. The release explicitly states that its automatic GitHub source archives currently contain documentation only. Uploaded asset digests/sizes are checked against the local build.
+
+
+## Windows development source handoff
+
+The owner requested the source necessary to clone and continue development on a Windows PC. This authorizes publication of the eight reviewed shared compatibility dependencies; their classification and the owner's instruction are recorded in `dependency-policy/android-publication-review.json`. Native Android projects, generated resources, Android-specific packaging scripts/screenshots, credentials, sessions, caches and build outputs remain excluded. The clean publication checkout retains the existing GitHub documentation commits as parents and imports only the reviewed source snapshot.
+
+The Windows launcher keeps the shared Teragram profile and `tg-drive-local` feature, then adds the Windows-only NSIS/runtime configuration for production builds. Development mode does not require the downloaded runtime resource. `Docs/WINDOWS_DEVELOPMENT.md` describes Windows prerequisites, cloning, development, signed Microsoft runtime preparation, building and verification. The Windows workflow is manual and does not publish releases automatically. Windows compilation, installation and runtime behavior remain UNRUN on this Mac.
+
+The actual publication snapshot passed TypeScript/production frontend build and unchanged bundle budgets, all **123 browser E2E journeys**, localization, static app security, workflow pin/protection checks and test policy. The service's type check, **27 local HTTP/D1 E2E journeys** and deployment dry-run passed; no real payment or deployment occurred. Native formatting passed. The native suite first encountered sandbox restrictions on local servers/decoding; with those permissions, **222 passed and one WebDAV test timed out at process shutdown**. That exact test passed alone without a test or timeout change. A full native rerun without concurrent browser load is recorded separately before handoff. These checks run on macOS/controlled boundaries and are not Windows acceptance.
+
+
+Final native rerun: **223 passed, 0 failed**, with four test threads and no concurrent browser load. No test or timeout was modified. The source handoff therefore includes a clean final native result while retaining the earlier shutdown-timeout observation above. Windows compilation/runtime remains unverified. The final outgoing source snapshot passed the strict Android publication guard and staged whitespace checks. The Mac release binaries and their preview tag are unchanged by this source publication.

@@ -5,11 +5,11 @@
 
 ### Your photos and files, together in a Telegram-powered workspace.
 
-A macOS app combining a natural media gallery with a practical cloud file manager. Browse Saved Messages and linked Telegram channels, organize folders, preview documents, and manage transfers from one calm workspace.
+A desktop app combining a natural media gallery with a practical cloud file manager. Browse Saved Messages and linked Telegram channels, organize folders, preview documents, and manage transfers from one calm workspace.
 
 [Download for macOS](https://github.com/kirxndinesh/Teragram/releases/tag/v1.0.0-macos-preview) · [Release notes](https://github.com/kirxndinesh/Teragram/releases) · [Report an issue](https://github.com/kirxndinesh/Teragram/issues)
 
-**v1.0 · macOS Apple Silicon · React + Tauri + Rust**
+**v1.0 · macOS preview available · Windows development source ready · React + Tauri + Rust**
 </div>
 
 ## What Teragram does
@@ -43,11 +43,36 @@ Telegram requires an application API ID and API hash. They are not bundled or pu
 
 Never share API hashes, login codes, session databases, vault keys or recovery material in issues. Ordinary uploads are stored normally in Telegram; optional encrypted uploads protect the file contents locally before transfer. Keep independent backups of important files.
 
-## Source publication
+## Develop on Windows
 
-This repository currently hosts the branded documentation and macOS release. The complete tested source snapshot is staged locally, pending the owner's approval of eight compatibility files under the repository's Android publication policy. See [the exact file review](Docs/release/TERAGRAM_SOURCE_PUBLICATION.md). Native Android projects, signing files, Telegram credentials, session databases and personal media are excluded.
+The complete shared desktop source is available to clone. See [Windows setup, build and verification instructions](Docs/WINDOWS_DEVELOPMENT.md). Windows packaging is configured; a Windows binary has not yet been built or tested.
 
-The automatic GitHub source archives for this preview contain these published documents, not the complete application source. Use the `.dmg` or `.app.zip` assets to install Teragram.
+```powershell
+git clone https://github.com/kirxndinesh/Teragram.git
+cd Teragram\app
+npm ci
+npm run teragram:dev
+```
+
+Install the C++/MSVC, Rust and WebView2 prerequisites in the guide first. Native Android projects and signing files are excluded.
+
+## Build and verify on macOS
+
+Requirements: macOS with Xcode command-line tools, Node.js 22+, Rust 1.92+ and the native prerequisites documented by Tauri. FFmpeg is optional for conversion/extraction features.
+
+```sh
+cd app
+npm ci
+npm run teragram:dev
+# macOS production bundle:
+npm run teragram:build
+# Desktop browser journeys and static verification:
+npm run teragram:test
+npm run build:verify
+npm run i18n:check
+```
+
+The repository contains the shared application and desktop source. Native Android SDK projects, signing material, personal Telegram data, local caches, build-tool downloads and compiled application bundles are excluded. Installers belong in Releases.
 
 ## Verification and scope
 
