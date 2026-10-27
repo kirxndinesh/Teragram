@@ -45,7 +45,7 @@ Never share API hashes, login codes, session databases, vault keys or recovery m
 
 ## Develop on Windows
 
-The complete shared desktop source is available to clone. See [Windows setup, build and verification instructions](Docs/WINDOWS_DEVELOPMENT.md). Windows packaging is configured; a Windows binary has not yet been built or tested.
+The complete shared desktop source is available to clone. See [Windows setup, build and verification instructions](Docs/WINDOWS_DEVELOPMENT.md). The [Windows verification workflow](https://github.com/kirxndinesh/Teragram/actions/workflows/teragram-windows.yml) must pass before using a candidate installer.
 
 ```powershell
 git clone https://github.com/kirxndinesh/Teragram.git

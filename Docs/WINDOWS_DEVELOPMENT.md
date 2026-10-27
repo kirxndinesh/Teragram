@@ -1,6 +1,6 @@
 # Continue Teragram development on Windows
 
-The repository contains the final shared Teragram source, including the gallery cache, bulk-upload refresh recovery, transfer-widget lifecycle, branding and folder-dialog refinements. The published v1.0 macOS app remains unchanged. A Windows installer has **not** been built or run on the current Mac; build and verify it on Windows before publishing it.
+The repository contains the shared Teragram source, including the gallery cache, bulk-upload refresh recovery, transfer-widget lifecycle, branding and folder-dialog refinements. The published v1.0 macOS app remains unchanged. Build and verify Windows installers on Windows before publishing them. The Windows workflow uploads a candidate only after its verification and install-and-launch gates pass.
 
 ## Prerequisites
 
