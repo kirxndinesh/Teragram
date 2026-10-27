@@ -33,15 +33,24 @@ jobs:
         run: npm ci
       - name: Validate publication and security policy
         run: |
-          node scripts/check-test-policy.cjs
-          node scripts/check-app-security.cjs
-          node scripts/check-workflow-pins.cjs
+          $checks = @(
+            'scripts/check-test-policy.cjs',
+            'scripts/check-app-security.cjs',
+            'scripts/check-workflow-pins.cjs',
+            'scripts/check-rust-formatting.cjs'
+          )
+          foreach ($check in $checks) {
+            node $check
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
           node scripts/check-android-publication.cjs --tracked-only --strict
-          node scripts/check-rust-formatting.cjs
+      - name: Verify workflow policy with Windows line endings
+        run: node --test --test-name-pattern="workflow protection CLI" scripts/e2e/assurance.e2e.cjs
       - name: Validate localization and production frontend
         working-directory: app
         run: |
           npm run i18n:check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run build:verify
       - name: Install browser
         working-directory: app
@@ -55,6 +64,13 @@ jobs:
       - name: Exercise native process, storage and HTTP journeys on Windows
         working-directory: app/src-tauri
         run: cargo test --locked --features native-e2e --test native_e2e
+      - name: Repeat the in-flight account revocation regression
+        working-directory: app/src-tauri
+        run: |
+          foreach ($attempt in 1..5) {
+            cargo test --locked --features native-e2e --test native_e2e media_http_ranges_filenames_failures_and_account_revocation -- --exact
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Lint Windows native targets
         working-directory: app/src-tauri
         run: cargo clippy --locked --features native-e2e --lib --all-targets -- -D warnings

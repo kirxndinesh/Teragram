@@ -161,6 +161,7 @@ struct MediaFixture {
     resolution_gate: Arc<tokio::sync::Notify>,
     active_downloads: Arc<AtomicU64>,
     downloaded_chunks: Arc<AtomicU64>,
+    download_gate: Arc<tokio::sync::Notify>,
 }
 
 fn fixture_download(
@@ -170,6 +171,7 @@ fn fixture_download(
     delay_ms: u64,
     active: Arc<AtomicU64>,
     chunks: Arc<AtomicU64>,
+    mut gate: Option<Arc<tokio::sync::Notify>>,
 ) -> impl futures::Stream<Item = Result<actix_web::web::Bytes, actix_web::Error>> {
     struct Active(Arc<AtomicU64>);
     impl Drop for Active {
@@ -190,6 +192,13 @@ fn fixture_download(
         }
         let mut delivered = 0;
         loop {
+            // Keep revocation journeys in flight regardless of disk/IPC speed.
+            // This gate exists only in the feature-gated native fixture driver.
+            if delivered > 0 {
+                if let Some(gate) = gate.take() {
+                    gate.notified().await;
+                }
+            }
             if fail_after.is_some_and(|limit| delivered >= limit) {
                 yield Err("Fixture download interrupted".to_string()); return;
             }
@@ -228,6 +237,8 @@ struct MediaFixtureQuery {
     message_id: i32,
     #[serde(default)]
     wait_for_resolution: bool,
+    #[serde(default)]
+    wait_after_first: bool,
 }
 
 async fn fixture_media(
@@ -269,6 +280,9 @@ async fn fixture_media(
     };
     let active_downloads = fixture.active_downloads.clone();
     let downloaded_chunks = fixture.downloaded_chunks.clone();
+    let download_gate = query
+        .wait_after_first
+        .then(|| fixture.download_gate.clone());
     if query.protected {
         let Some(credential) = query.credential else {
             return actix_web::HttpResponse::Locked().finish();
@@ -309,6 +323,7 @@ async fn fixture_media(
                     query.delay_ms,
                     active_downloads.clone(),
                     downloaded_chunks.clone(),
+                    download_gate,
                 )
             },
         )
@@ -334,6 +349,7 @@ async fn fixture_media(
                 query.delay_ms,
                 active_downloads.clone(),
                 downloaded_chunks.clone(),
+                download_gate,
             )
         },
     )
@@ -3652,6 +3668,7 @@ impl Driver {
                     resolutions: Arc::new(AtomicU64::new(0)),
                     active_downloads: Arc::new(AtomicU64::new(0)),
                     downloaded_chunks: Arc::new(AtomicU64::new(0)),
+                    download_gate: Arc::new(tokio::sync::Notify::new()),
                     resolution_gate: Arc::new(tokio::sync::Notify::new()),
                     cache: Arc::new(crate::server::MediaResolutionCache::new(
                         request["cacheEntries"].as_u64().unwrap_or(64) as usize,
@@ -3676,6 +3693,15 @@ impl Driver {
                         .app_data(actix_web::web::Data::new(crypto.clone()))
                         .app_data(actix_web::web::Data::new(fixture.clone()))
                         .route("/media", actix_web::web::get().to(fixture_media))
+                        .route(
+                            "/download-continue",
+                            actix_web::web::post().to(
+                                |fixture: actix_web::web::Data<MediaFixture>| async move {
+                                    fixture.download_gate.notify_one();
+                                    actix_web::HttpResponse::NoContent().finish()
+                                },
+                            ),
+                        )
                         .route("/prefetch-status",actix_web::web::get().to(|fixture:actix_web::web::Data<MediaFixture>|async move {
                             actix_web::HttpResponse::Ok().json(json!({"active":fixture.active_downloads.load(Ordering::SeqCst),"chunks":fixture.downloaded_chunks.load(Ordering::SeqCst)}))
                         }))

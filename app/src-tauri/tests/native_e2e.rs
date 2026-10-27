@@ -2475,25 +2475,60 @@ async fn media_http_ranges_filenames_failures_and_account_revocation() {
             assert!(response.bytes().await.is_err());
         }
     }
+    // Hold the source after its first chunk, so a fast/buffered download cannot
+    // finish before the child process completes the account switch on Windows.
     let mut response = client
-        .get(format!("{url}&delayMs=20"))
-        .send()
-        .await
-        .unwrap();
-    assert!(!response.chunk().await.unwrap().unwrap().is_empty());
-    app.ok(json!({"command":"seed_account", "owner":202}));
-    assert!(response.bytes().await.is_err());
-    assert_eq!(client.get(url).send().await.unwrap().status(), 404);
-    let fresh = app.ok(
-        json!({"command":"start_media_fixture","source":"media.bin","filename":"owner-202.bin"}),
-    );
-    let response = client
-        .get(fresh["url"].as_str().unwrap())
+        .get(format!("{url}&waitAfterFirst=true"))
         .send()
         .await
         .unwrap();
     assert_eq!(response.status(), 200);
-    assert_eq!(response.bytes().await.unwrap().as_ref(), content.as_slice());
+    let first = response.chunk().await.unwrap().unwrap();
+    assert!(!first.is_empty() && first.len() < content.len());
+    app.ok(json!({"command":"seed_account", "owner":202}));
+    let continue_url = format!("{}/download-continue", url.split("/media").next().unwrap());
+    assert_eq!(
+        client.post(&continue_url).send().await.unwrap().status(),
+        204
+    );
+    assert!(
+        tokio::time::timeout(Duration::from_secs(10), response.bytes())
+            .await
+            .expect("Released old-account response must terminate")
+            .is_err()
+    );
+    assert_eq!(client.get(url).send().await.unwrap().status(), 404);
+    let fresh = app.ok(
+        json!({"command":"start_media_fixture","source":"media.bin","filename":"owner-202.bin"}),
+    );
+    // The same gate must deliver the complete body when ownership is retained.
+    let fresh_url = fresh["url"].as_str().unwrap();
+    let response = client
+        .get(format!("{fresh_url}&waitAfterFirst=true"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        client
+            .post(format!(
+                "{}/download-continue",
+                fresh_url.split("/media").next().unwrap()
+            ))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        204
+    );
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(10), response.bytes())
+            .await
+            .expect("Released current-account response must complete")
+            .unwrap()
+            .as_ref(),
+        content.as_slice()
+    );
     app.stop();
 }
 

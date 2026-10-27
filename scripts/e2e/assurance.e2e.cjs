@@ -25,6 +25,34 @@ function success(result) {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 }
 
+test('workflow protection CLI accepts Windows line endings and still rejects weakened deployment guards', t => {
+  const directory = fixture(t);
+  const workflows = path.join(directory, '.github', 'workflows');
+  fs.cpSync(path.resolve(scripts, '../.github/workflows'), workflows, { recursive: true });
+  fs.mkdirSync(path.join(directory, 'scripts'));
+  const checker = path.join(directory, 'scripts', 'check-workflow-pins.cjs');
+  fs.copyFileSync(path.join(scripts, 'check-workflow-pins.cjs'), checker);
+  const check = () => spawnSync(process.execPath, [checker], { encoding: 'utf8', timeout: 15_000 });
+  success(check());
+  for (const name of fs.readdirSync(workflows)) {
+    const file = path.join(workflows, name);
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/\r?\n/g, '\r\n'));
+  }
+  success(check());
+  const pagesPath = path.join(workflows, 'pages.yml');
+  const pages = fs.readFileSync(pagesPath, 'utf8');
+  fs.writeFileSync(pagesPath, pages.replace('      group: pages', '      group: unprotected'));
+  const invalid = check();
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /Pages concurrency must apply only to the permitted deployment job/);
+  fs.writeFileSync(pagesPath, pages);
+  const releasePath = path.join(workflows, 'release.yml');
+  fs.writeFileSync(releasePath, fs.readFileSync(releasePath, 'utf8').replace("workflow_id: 'pages.yml'", "workflow_id: 'other.yml'"));
+  const dispatch = check();
+  assert.equal(dispatch.status, 1);
+  assert.match(dispatch.stderr, /Stable desktop publication must explicitly dispatch/);
+});
+
 test('release artifacts pass through SBOM generation and an independently verified checksum manifest', t => {
   const directory = fixture(t);
   const report = path.join(directory, 'gradle-dependencies.txt');
