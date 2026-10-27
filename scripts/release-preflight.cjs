@@ -16,7 +16,7 @@ for (let i = 2; i < process.argv.length; i++) {
     options[{ '--service-url': 'service', '--public-key': 'key', '--verify-attestation': 'artifact', '--attestation-repo': 'repo' }[flag]] = value;
   } else throw new Error(`Unknown flag ${flag}`);
 }
-const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+const read = name => fs.readFileSync(path.join(root, name), 'utf8').replace(/\r\n/g, '\n');
 const json = name => JSON.parse(read(name));
 function processCheck(command, args) {
   const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', timeout: 60_000 });
@@ -37,7 +37,9 @@ async function main() {
   const heading = read('CHANGELOG.md').match(/^## \[([^\]]+)\]/m)?.[1];
   if (heading !== version && !(options.unreleased && heading === 'Unreleased')) throw new Error(`First changelog heading must be ${version}; use --allow-unreleased only for local readiness`);
   const links = [...read('README.md').matchAll(/releases\/download\/v([^/]+)\//g)].map(match => match[1]);
-  if (!links.length || links.some(value => value !== version)) throw new Error('README desktop download links disagree with application version');
+  // The published macOS preview uses the application version plus this exact
+  // platform qualifier. Other versions or arbitrary prereleases still fail.
+  if (!links.length || links.some(value => value !== version && value !== `${version}-macos-preview`)) throw new Error('README desktop download links disagree with application version');
   for (const name of ['.cargo/config.toml', 'app/package-lock.json', 'app/src-tauri/Cargo.lock', 'app/src-tauri/build.rs', 'app/src-tauri/build/search-support.rs', 'app/src-tauri/tauri.windows.release.conf.json']) {
     if (!fs.statSync(path.join(root, name)).isFile()) throw new Error(`Missing release build input ${name}`);
   }

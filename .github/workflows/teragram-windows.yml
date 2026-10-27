@@ -64,12 +64,14 @@ jobs:
       - name: Exercise native process, storage and HTTP journeys on Windows
         working-directory: app/src-tauri
         run: cargo test --locked --features native-e2e --test native_e2e
-      - name: Repeat the in-flight account revocation regression
+      - name: Repeat native media and memory regressions
         working-directory: app/src-tauri
         run: |
-          foreach ($attempt in 1..5) {
-            cargo test --locked --features native-e2e --test native_e2e media_http_ranges_filenames_failures_and_account_revocation -- --exact
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($regression in @('media_http_ranges_filenames_failures_and_account_revocation', 'heic_memory_threshold_terminates_a_touching_decoder_process')) {
+            foreach ($attempt in 1..5) {
+              cargo test --locked --features native-e2e --test native_e2e $regression -- --exact
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
           }
       - name: Lint Windows native targets
         working-directory: app/src-tauri

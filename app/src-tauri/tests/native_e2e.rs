@@ -8707,11 +8707,11 @@ fn heic_memory_threshold_terminates_a_touching_decoder_process() {
     let (fixture, mut app) = heic_fixture();
     fixture.write("heic-mode", "memory");
     let failure = app.failure(heic_request());
+    let status = app.ok(json!({"command":"heic_status"}));
     assert!(
         failure.contains("MEMORY_LIMIT") || failure.contains("HEIC_DECODE_FAILED"),
-        "{failure}"
+        "{failure}; {status}"
     );
-    let status = app.ok(json!({"command":"heic_status"}));
     assert_eq!(status["decoderEntered"], true, "{status}");
     assert!(
         fixture.path("heic-ready").is_file(),

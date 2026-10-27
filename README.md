@@ -7,7 +7,7 @@
 
 A desktop app combining a natural media gallery with a practical cloud file manager. Browse Saved Messages and linked Telegram channels, organize folders, preview documents, and manage transfers from one calm workspace.
 
-[Download for macOS](https://github.com/kirxndinesh/Teragram/releases/tag/v1.0.0-macos-preview) · [Release notes](https://github.com/kirxndinesh/Teragram/releases) · [Report an issue](https://github.com/kirxndinesh/Teragram/issues)
+[Download for macOS](https://github.com/kirxndinesh/Teragram/releases/download/v1.0.0-macos-preview/Teragram_1.0.0_macos_arm64.dmg) · [Release notes](https://github.com/kirxndinesh/Teragram/releases) · [Report an issue](https://github.com/kirxndinesh/Teragram/issues)
 
 **v1.0 · macOS preview available · Windows development source ready · React + Tauri + Rust**
 </div>

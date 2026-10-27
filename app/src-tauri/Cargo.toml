@@ -75,7 +75,7 @@ hkdf = "0.12"
 hmac = "0.12"
 zeroize = { version = "1", features = ["derive"] }
 getrandom = "0.2"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9.1.2", default-features = false, features = ["deflate"] }
 sevenz-rust2 = "0.7"
 path-clean = "1"
 walkdir = "2"
@@ -103,7 +103,7 @@ rfd = { version = "0.16", default-features = false }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.61.3", features = ["Foundation", "Storage", "Storage_Streams", "Media_Editing", "Graphics_Imaging", "Win32_System_WinRT"] }
-windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp"] }
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_ProcessStatus"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"
@@ -134,3 +134,7 @@ test = false
 name = "native_e2e"
 path = "tests/native_e2e.rs"
 required-features = ["native-e2e"]
+
+# Preserve the updater API while using ZIP with the extraction security fixes.
+[patch.crates-io]
+tauri-plugin-updater = { path = "vendor/tauri-plugin-updater" }

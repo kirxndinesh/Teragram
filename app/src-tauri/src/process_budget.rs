@@ -4,7 +4,9 @@ use std::{
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
 };
-use sysinfo::{Pid, System};
+#[cfg(not(target_os = "windows"))]
+use sysinfo::Pid;
+use sysinfo::System;
 
 pub(crate) const RESIDENT_LIMIT: u64 = 1024 * 1024 * 1024;
 #[cfg(target_os = "linux")]
@@ -26,6 +28,37 @@ struct Running {
     running: bool,
     #[cfg(target_os = "windows")]
     job: windows_sys::Win32::Foundation::HANDLE,
+}
+
+fn resident_bytes(running: &Running, system: &mut System) -> Option<u64> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::System::ProcessStatus::{
+            K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+        };
+        let _ = system;
+        // Keep using the owned process handle while a job-limited child exits.
+        // Reopening its PID through sysinfo can fail before try_wait sees exit.
+        let mut counters: PROCESS_MEMORY_COUNTERS = unsafe { std::mem::zeroed() };
+        let size = std::mem::size_of_val(&counters) as u32;
+        counters.cb = size;
+        if unsafe { K32GetProcessMemoryInfo(running.child.as_raw_handle(), &mut counters, size) }
+            == 0
+        {
+            return None;
+        }
+        Some(counters.WorkingSetSize.max(counters.PeakWorkingSetSize) as u64)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let pid = Pid::from_u32(running.child.id());
+        if system.refresh_process(pid) {
+            system.process(pid).map(|process| process.memory())
+        } else {
+            None
+        }
+    }
 }
 impl Running {
     fn stop(&mut self) -> Option<u64> {
@@ -363,7 +396,6 @@ fn run_inner(
     #[cfg(feature = "native-e2e")]
     let spawn_seconds = started.elapsed().as_secs_f64();
     let mut system = System::new();
-    let pid = Pid::from_u32(running.child.id());
     let mut peak = 0;
     let observed = (|| -> Result<(bool, Option<u64>), String> {
         loop {
@@ -410,27 +442,26 @@ fn run_inner(
             }
             #[cfg(feature = "native-e2e")]
             let sampled = Instant::now();
-            let refreshed = system.refresh_process(pid);
+            let resident = resident_bytes(&running, &mut system);
             #[cfg(feature = "native-e2e")]
             let completed = completion.as_ref().is_some_and(|path| {
                 std::fs::read_to_string(path)
                     .is_ok_and(|value| value == running.child.id().to_string())
             });
             #[cfg(feature = "native-e2e")]
-            let refreshed = refreshed
-                && !fixture.is_some_and(|clock| match clock.monitor_loss {
+            let resident = resident.filter(|_| {
+                !fixture.is_some_and(|clock| match clock.monitor_loss {
                     Some(FixtureMonitorLoss::BeforeCompletion) => clock_started.is_some(),
                     Some(FixtureMonitorLoss::AfterCompletion) => completed,
                     None => false,
-                });
+                })
+            });
             #[cfg(feature = "native-e2e")]
             {
                 sampler_seconds += sampled.elapsed().as_secs_f64();
             }
-            if refreshed {
-                if let Some(process) = system.process(pid) {
-                    peak = peak.max(process.memory());
-                }
+            if let Some(bytes) = resident {
+                peak = peak.max(bytes);
             } else if let Some(result) = running.finish()? {
                 return Ok(result);
             } else {

@@ -87,6 +87,24 @@ async function fixture(page: Page, mode: 'hub' | 'gallery', pageSize = 256) {
     await page.goto(`/__workspace_browser?mode=${mode}`);
 }
 
+test('adding files invalidates an earlier empty collection search', async ({ page }) => {
+    await fixture(page, 'hub');
+    await page.getByRole('button', { name: 'Create collection' }).click();
+    await page.getByLabel('Name', { exact: true }).fill('Summer');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('0 indexed results');
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await page.getByRole('button', { name: 'Select Saved photo.jpg', exact: true }).click();
+    await page.getByLabel('Choose collection', { exact: true }).selectOption({ label: 'Summer' });
+    await page.getByRole('button', { name: 'Add to collection', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__workspaceTest.snapshot.files[0].collectionIds.length)).toBe(1);
+    await page.getByRole('button', { name: 'Summer', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Open Saved photo.jpg', exact: true })).toBeVisible();
+    await page.reload();
+    await page.getByRole('button', { name: 'Summer', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Open Saved photo.jpg', exact: true })).toBeVisible();
+});
+
 test('collections, covers, tags and editable saved-search rules survive reload', async ({ page }, testInfo) => {
     await fixture(page, 'hub');
     await page.getByRole('button', { name: 'Create collection' }).click();
