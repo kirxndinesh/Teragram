@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import zipfile
@@ -30,7 +31,11 @@ def require(condition, message):
 
 
 def gh(*args):
-    return subprocess.check_output(["gh", *args], text=True)
+    result = subprocess.run(["gh", *args], text=True, capture_output=True)
+    if result.returncode:
+        message = re.sub(r"(https://[^\s?]+)\?[^\s]+", r"\1?[redacted]", result.stderr)
+        raise RuntimeError(message.strip() or "GitHub command failed")
+    return result.stdout
 
 
 def api(endpoint, payload=None):
@@ -180,7 +185,12 @@ The installer is unsigned; Windows may display SmartScreen warnings. This is a p
 
 
 if __name__ == "__main__":
-    require(os.environ.get("GITHUB_ACTIONS") == "true", "Run publication in GitHub Actions")
-    require(len(sys.argv) == 2 and sys.argv[1] in ("prepare", "publish"), "Expected prepare or publish")
-    OUT.mkdir(parents=True, exist_ok=True)
-    {"prepare": prepare, "publish": publish}[sys.argv[1]]()
+    try:
+        require(os.environ.get("GITHUB_ACTIONS") == "true", "Run publication in GitHub Actions")
+        require(len(sys.argv) == 2 and sys.argv[1] in ("prepare", "publish"), "Expected prepare or publish")
+        OUT.mkdir(parents=True, exist_ok=True)
+        {"prepare": prepare, "publish": publish}[sys.argv[1]]()
+    except Exception as error:
+        message = str(error).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error::{message}", flush=True)
+        raise
