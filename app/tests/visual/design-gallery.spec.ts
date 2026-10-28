@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function openGallery(page: Page) {
   await page.goto('/?design-gallery');
-  await expect(page.getByRole('heading', { name: 'Quiet Utility gallery' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Quiet Utility gallery' })).toBeVisible({ timeout: 30_000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -22,14 +22,18 @@ test('dark compact RTL gallery', async ({ page }) => {
 
 test('focus treatment remains visible', async ({ page }) => {
   await openGallery(page);
+  await page.getByRole('group', { name: 'Theme preference' }).getByRole('button', { name: 'Light' }).click();
+  await page.getByRole('group', { name: 'Layout direction' }).getByRole('button', { name: 'LTR', exact: true }).focus();
   await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
   await expect(page.locator(':focus-visible')).toBeVisible();
   await expect(page.locator('main')).toHaveScreenshot('gallery-keyboard-focus.png', { fullPage: true });
 });
 
 test('Japanese CJK strings fit the narrow locale fixture', async ({ page }) => {
   await page.goto('/?design-gallery&locale-stress');
-  await expect(page.getByRole('heading', { name: 'Quiet Utility gallery' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Quiet Utility gallery' })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('group', { name: 'Theme preference' }).getByRole('button', { name: 'Light' }).click();
   await page.getByLabel('Audit language').selectOption('ja');
   const card = page.getByTestId('localized-offline-card');
   await expect(card).toHaveAttribute('data-language-ready', 'ja');
@@ -56,38 +60,16 @@ test('new regional language strings fit the narrow locale fixture', async ({ pag
   }
 });
 
-test('desktop sponsor card renders without external creative dependencies', async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.assign(window, {
-      __TAURI_INTERNALS__: {
-        invoke: async (command: string) => {
-          if (command === 'cmd_get_supporter_status') return {
-            state: 'inactive', ad_free: false, message: '', terms_version: '2026-08-11',
-            terms_url: null, expires_at: null, offline_until: null, recovery_code_saved: false,
-          };
-          throw new Error(`Unexpected native command: ${command}`);
-        },
-      },
-    });
+test('the local gallery never creates sponsor creatives through a legacy preview URL', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', request => {
+    if (/\/ad-banner|\/ad-gateway/.test(request.url())) requests.push(request.url());
   });
   await page.goto('/?design-gallery&sponsor-preview');
-  await expect(page.getByRole('heading', { name: 'Sponsor placement preview' })).toBeVisible();
-
-  const banner = page.getByRole('complementary', { name: /Sponsored advertisement/ });
-  await expect(banner).toBeVisible();
-  await expect(banner).toContainText('A quick message from our sponsor');
-  await expect(banner).toContainText('Closes in 10s');
-
-  const layout = await banner.evaluate(element => ({
-    width: element.getBoundingClientRect().width,
-    fitsHorizontally: element.scrollWidth <= element.clientWidth,
-    fitsVertically: element.scrollHeight <= element.clientHeight,
-    hasIframe: element.querySelector('iframe') !== null,
-  }));
-  expect(layout.width).toBe(300);
-  expect(layout.fitsHorizontally).toBe(true);
-  expect(layout.fitsVertically).toBe(true);
-  expect(layout.hasIframe).toBe(false);
+  await expect(page.getByRole('heading', { name: 'Quiet Utility gallery' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: /Sponsored advertisement/ })).toHaveCount(0);
+  await expect(page.locator('iframe')).toHaveCount(0);
+  expect(requests).toEqual([]);
 });
 
 test('axe accessibility audit has no violation groups', async ({ page }) => {

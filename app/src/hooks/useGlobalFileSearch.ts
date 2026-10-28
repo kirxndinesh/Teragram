@@ -14,8 +14,10 @@ export function useLocalFileSearch(query: LocalSearchQuery, ownerId: string | nu
     useEffect(() => {
         if (metadata.current === metadataVersion) return;
         metadata.current = metadataVersion;
-        void client.invalidateQueries({ queryKey, exact: true });
-    }, [metadataVersion]);
+        // A mutation can change a collection/search that is currently inactive.
+        // Mark every cached query for this account stale before it is revisited.
+        void client.invalidateQueries({ queryKey: ['local-search', ownerId] });
+    }, [metadataVersion, ownerId, client]);
     const result = useQuery({
         queryKey,
         queryFn: async ({ signal }) => {

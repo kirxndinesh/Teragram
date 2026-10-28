@@ -3,6 +3,7 @@ import base from './playwright.config';
 
 export default defineConfig(base, {
   testMatch: [
+    '**/local-profile.spec.ts',
     '**/teragram-upload-refresh.spec.ts',
     '**/teragram-transfer-banner.spec.ts', '**/transfer-cleanup.spec.ts',
     '**/teragram-folder-dialogs.spec.ts',

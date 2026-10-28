@@ -7,7 +7,7 @@
 
 A desktop app combining a natural media gallery with a practical cloud file manager. Browse Saved Messages and linked Telegram channels, organize folders, preview documents, and manage transfers from one calm workspace.
 
-[Download for macOS](https://github.com/kirxndinesh/Teragram/releases/tag/v1.0.0-macos-preview) · [Release notes](https://github.com/kirxndinesh/Teragram/releases) · [Report an issue](https://github.com/kirxndinesh/Teragram/issues)
+[Download for macOS](https://github.com/kirxndinesh/Teragram/releases/download/v1.0.0-macos-preview/Teragram_1.0.0_macos_arm64.dmg) · [Release notes](https://github.com/kirxndinesh/Teragram/releases) · [Report an issue](https://github.com/kirxndinesh/Teragram/issues)
 
 **v1.0 · macOS preview available · Windows development source ready · React + Tauri + Rust**
 </div>
@@ -45,7 +45,7 @@ Never share API hashes, login codes, session databases, vault keys or recovery m
 
 ## Develop on Windows
 
-The complete shared desktop source is available to clone. See [Windows setup, build and verification instructions](Docs/WINDOWS_DEVELOPMENT.md). Windows packaging is configured; a Windows binary has not yet been built or tested.
+The complete shared desktop source is available to clone. See [Windows setup, build and verification instructions](Docs/WINDOWS_DEVELOPMENT.md). The [Windows verification workflow](https://github.com/kirxndinesh/Teragram/actions/workflows/teragram-windows.yml) must pass before using a candidate installer.
 
 ```powershell
 git clone https://github.com/kirxndinesh/Teragram.git

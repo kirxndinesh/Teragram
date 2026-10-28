@@ -25,6 +25,34 @@ function success(result) {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 }
 
+test('workflow protection CLI accepts Windows line endings and still rejects weakened deployment guards', t => {
+  const directory = fixture(t);
+  const workflows = path.join(directory, '.github', 'workflows');
+  fs.cpSync(path.resolve(scripts, '../.github/workflows'), workflows, { recursive: true });
+  fs.mkdirSync(path.join(directory, 'scripts'));
+  const checker = path.join(directory, 'scripts', 'check-workflow-pins.cjs');
+  fs.copyFileSync(path.join(scripts, 'check-workflow-pins.cjs'), checker);
+  const check = () => spawnSync(process.execPath, [checker], { encoding: 'utf8', timeout: 15_000 });
+  success(check());
+  for (const name of fs.readdirSync(workflows)) {
+    const file = path.join(workflows, name);
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/\r?\n/g, '\r\n'));
+  }
+  success(check());
+  const pagesPath = path.join(workflows, 'pages.yml');
+  const pages = fs.readFileSync(pagesPath, 'utf8');
+  fs.writeFileSync(pagesPath, pages.replace('      group: pages', '      group: unprotected'));
+  const invalid = check();
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /Pages concurrency must apply only to the permitted deployment job/);
+  fs.writeFileSync(pagesPath, pages);
+  const releasePath = path.join(workflows, 'release.yml');
+  fs.writeFileSync(releasePath, fs.readFileSync(releasePath, 'utf8').replace("workflow_id: 'pages.yml'", "workflow_id: 'other.yml'"));
+  const dispatch = check();
+  assert.equal(dispatch.status, 1);
+  assert.match(dispatch.stderr, /Stable desktop publication must explicitly dispatch/);
+});
+
 test('release artifacts pass through SBOM generation and an independently verified checksum manifest', t => {
   const directory = fixture(t);
   const report = path.join(directory, 'gradle-dependencies.txt');
@@ -350,7 +378,9 @@ sqlite={version="=0.37.0",features=["bundled"]}
   const environment = { ...process.env };
   delete environment.SQLITE_ENABLE_FTS5;
   const cargo = (args, env = environment) => {
-    const result = spawnSync('cargo', args, { cwd: directory, env, encoding: 'utf8', timeout: 120_000 });
+    // This is a cold native dependency build, not an application latency gate.
+    // Constrained cloud CPUs can need more than two minutes for bundled SQLite.
+    const result = spawnSync('cargo', args, { cwd: directory, env, encoding: 'utf8', timeout: 300_000 });
     assert.ifError(result.error);
     return result;
   };
@@ -364,6 +394,39 @@ sqlite={version="=0.37.0",features=["bundled"]}
   success(cargo(['build', '--offline'], { ...environment, SQLITE_ENABLE_FTS5: '1' }));
 });
 
+
+test('release preflight accepts the matching macOS preview and rejects stale or missing download versions', t => {
+  const directory = fixture(t);
+  const root = path.resolve(scripts, '..');
+  const tracked = spawnSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' });
+  success(tracked);
+  for (const name of tracked.stdout.split('\0').filter(Boolean)) {
+    const target = path.join(directory, name);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(root, name), target);
+  }
+  success(spawnSync('git', ['init', '-q'], { cwd: directory, encoding: 'utf8' }));
+  success(spawnSync('git', ['add', '.'], { cwd: directory, encoding: 'utf8' }));
+  const readme = path.join(directory, 'README.md');
+  const version = JSON.parse(fs.readFileSync(path.join(directory, 'app/package.json'), 'utf8')).version;
+  const check = () => spawnSync(process.execPath, [path.join(directory, 'scripts/release-preflight.cjs'), '--allow-unreleased', '--skip-network'], {
+    cwd: directory, encoding: 'utf8', timeout: 15_000,
+  });
+  for (const tag of [`v${version}`, `v${version}-macos-preview`]) {
+    fs.writeFileSync(readme, `[Download](https://github.com/kirxndinesh/Teragram/releases/download/${tag}/Teragram.dmg)\n`);
+    const valid = check();
+    assert.equal(valid.status, 2, valid.stderr || valid.stdout);
+    assert.match(valid.stdout, /SKIPPED/);
+  }
+  for (const tag of ['v0.0.0', `v${version}-unreviewed`]) {
+    fs.writeFileSync(readme, `[Download](https://github.com/kirxndinesh/Teragram/releases/download/${tag}/Teragram.dmg)\n`);
+    const invalid = check();
+    assert.equal(invalid.status, 1);
+    assert.match(invalid.stderr, /README desktop download links disagree/);
+  }
+  fs.writeFileSync(readme, '[Releases](https://github.com/kirxndinesh/Teragram/releases)\n');
+  assert.equal(check().status, 1);
+});
 
 test('release preflight checks local inputs and exactly one read-only health request', async t => {
   const http = require('node:http');

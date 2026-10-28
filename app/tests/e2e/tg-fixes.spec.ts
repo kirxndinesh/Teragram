@@ -28,9 +28,10 @@ test('wide header keeps search bounded and actions against the far edge', async 
 });
 
 test('photo preview floats, reveals original progressively, toggles fullscreen and animates closing', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await desktopFixture(page, { gallery: true, holdPreviews: true, settings: { startupView: 'photos' } });
   await page.goto('/');
-  await expect(page.locator('.cloud-media-open img')).toHaveCount(6);
+  await expect(page.locator('.cloud-media-open img')).toHaveCount(6, { timeout: 30_000 });
   await page.getByRole('button', { name: 'Open Alpine morning.jpg', exact: true }).click();
   const viewer = page.getByRole('dialog', { name: 'Alpine morning.jpg', exact: true });
   await expect(viewer).toBeVisible();
@@ -46,9 +47,23 @@ test('photo preview floats, reveals original progressively, toggles fullscreen a
   await expect(viewer).toHaveClass(/is-fullscreen/);
   await page.keyboard.press('Escape');
   await expect(viewer).toBeVisible(); await expect(viewer).not.toHaveClass(/is-fullscreen/);
+  // Closing is shorter than a cross-process assertion poll on busy runners.
+  // Observe the actual class transition before the real backdrop click.
+  const closing = await viewer.evaluateHandle(element => {
+    const state = { seen: false };
+    const observer = new MutationObserver(() => {
+      if (element.classList.contains('is-closing')) {
+        state.seen = element.isConnected;
+        observer.disconnect();
+      }
+    });
+    observer.observe(element, { attributes: true, attributeFilter: ['class'] });
+    return state;
+  });
   await page.locator('.media-preview-backdrop').click({ position: { x: 8, y: 8 } });
-  await expect(viewer).toHaveClass(/is-closing/);
+  await expect.poll(() => closing.evaluate(state => state.seen)).toBe(true);
   await expect(viewer).toHaveCount(0);
+  await closing.dispose();
 });
 
 test('missing metadata resolves captions, generated names and dates while hiding ghosts in cloud and folders', async ({ page }) => {

@@ -43,8 +43,12 @@ test('docked navigation remains visible and collapses to a persisted rail', asyn
 test('sidebar animation keeps label geometry and icon anchors stable', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await desktopFixture(page, { gallery: true, settings: { sidebarCollapsed: false } }); await page.goto('/');
+  // Navigation can finish before the lazy workspace has a visible layout.
+  // boundingBox() only waits for attachment and can return null at startup.
+  await expect(page.locator('.cloud-sidebar')).toHaveCSS('width', '248px', { timeout: 30_000 });
   const photoIcon = page.locator('.cloud-sidebar nav > button').first().locator('svg');
-  const before = await photoIcon.boundingBox();
+  await expect(photoIcon).toBeVisible();
+  const beforeX = await photoIcon.evaluate(icon => icon.getBoundingClientRect().left);
   await page.keyboard.press('ControlOrMeta+b');
   const samples = await page.evaluate(async () => {
     const samples: { width: number; icon: number; height: number }[] = [];
@@ -56,7 +60,7 @@ test('sidebar animation keeps label geometry and icon anchors stable', async ({ 
     }
     return samples;
   });
-  expect(samples.every(s => Math.abs(s.icon - before!.x) < 1)).toBe(true);
+  expect(samples.every(s => Math.abs(s.icon - beforeX) < 1)).toBe(true);
   expect(samples.every(s => s.height <= 44)).toBe(true);
   await expect(page.locator('.cloud-sidebar')).toHaveCSS('width', '68px');
 });

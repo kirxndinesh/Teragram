@@ -2475,25 +2475,60 @@ async fn media_http_ranges_filenames_failures_and_account_revocation() {
             assert!(response.bytes().await.is_err());
         }
     }
+    // Hold the source after its first chunk, so a fast/buffered download cannot
+    // finish before the child process completes the account switch on Windows.
     let mut response = client
-        .get(format!("{url}&delayMs=20"))
-        .send()
-        .await
-        .unwrap();
-    assert!(!response.chunk().await.unwrap().unwrap().is_empty());
-    app.ok(json!({"command":"seed_account", "owner":202}));
-    assert!(response.bytes().await.is_err());
-    assert_eq!(client.get(url).send().await.unwrap().status(), 404);
-    let fresh = app.ok(
-        json!({"command":"start_media_fixture","source":"media.bin","filename":"owner-202.bin"}),
-    );
-    let response = client
-        .get(fresh["url"].as_str().unwrap())
+        .get(format!("{url}&waitAfterFirst=true"))
         .send()
         .await
         .unwrap();
     assert_eq!(response.status(), 200);
-    assert_eq!(response.bytes().await.unwrap().as_ref(), content.as_slice());
+    let first = response.chunk().await.unwrap().unwrap();
+    assert!(!first.is_empty() && first.len() < content.len());
+    app.ok(json!({"command":"seed_account", "owner":202}));
+    let continue_url = format!("{}/download-continue", url.split("/media").next().unwrap());
+    assert_eq!(
+        client.post(&continue_url).send().await.unwrap().status(),
+        204
+    );
+    assert!(
+        tokio::time::timeout(Duration::from_secs(10), response.bytes())
+            .await
+            .expect("Released old-account response must terminate")
+            .is_err()
+    );
+    assert_eq!(client.get(url).send().await.unwrap().status(), 404);
+    let fresh = app.ok(
+        json!({"command":"start_media_fixture","source":"media.bin","filename":"owner-202.bin"}),
+    );
+    // The same gate must deliver the complete body when ownership is retained.
+    let fresh_url = fresh["url"].as_str().unwrap();
+    let response = client
+        .get(format!("{fresh_url}&waitAfterFirst=true"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        client
+            .post(format!(
+                "{}/download-continue",
+                fresh_url.split("/media").next().unwrap()
+            ))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        204
+    );
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(10), response.bytes())
+            .await
+            .expect("Released current-account response must complete")
+            .unwrap()
+            .as_ref(),
+        content.as_slice()
+    );
     app.stop();
 }
 
@@ -3113,7 +3148,11 @@ fn zip_preview_and_extraction_use_private_files_verify_crc_limits_and_cleanup_ca
         let mut zip =
             zip::ZipArchive::new(std::fs::File::open(fixture.path("document.zip")).unwrap())
                 .unwrap();
-        let offset = zip.by_index(0).unwrap().data_start() as usize;
+        let offset = zip
+            .by_index(0)
+            .unwrap()
+            .data_start()
+            .expect("Fixture ZIP entry must have a data offset") as usize;
         offset
     };
     damaged[data_offset + 100] ^= 1;
@@ -3604,17 +3643,28 @@ fn an_api_consumer_cannot_consume_the_desktop_inventory_change_notification() {
     ] {
         fixture.write(
             path,
-            serde_json::to_vec(&json!({"highwater":1,"rows":[{"id":1,"name":name}]})).unwrap(),
+            // Bootstrap and the first poll deliberately exceed the fixture's
+            // short retention window before the API consumer runs. The desktop
+            // remains active; its notification baseline must stay intact.
+            serde_json::to_vec(&json!({
+                "highwater":1,
+                "historyDelayMs":if path == "initial.json" { 1100 } else { 0 },
+                "rows":[{"id":1,"name":name}],
+            }))
+            .unwrap(),
         );
     }
     let mut app = Backend::start(&fixture.0);
     app.ok(json!({"command":"seed_account","owner":101}));
     let result=app.ok(json!({"command":"inventory_timer_lifecycle","owner":"101","initial":"initial.json","changed":"changed.json","cold":"cold.json","consumerBeforePoll":true}));
+    assert_eq!(result["unchangedEvents"], 0);
     assert_eq!(
         result["changedEvents"], 1,
         "API read consumed the broadcast serial"
     );
     assert_eq!(result["changedName"], "Renamed elsewhere");
+    assert_eq!(result["coldName"], "Idle");
+    assert_eq!(result["coldLookupBatches"], 0);
     app.stop();
 }
 
@@ -8672,11 +8722,11 @@ fn heic_memory_threshold_terminates_a_touching_decoder_process() {
     let (fixture, mut app) = heic_fixture();
     fixture.write("heic-mode", "memory");
     let failure = app.failure(heic_request());
+    let status = app.ok(json!({"command":"heic_status"}));
     assert!(
         failure.contains("MEMORY_LIMIT") || failure.contains("HEIC_DECODE_FAILED"),
-        "{failure}"
+        "{failure}; {status}"
     );
-    let status = app.ok(json!({"command":"heic_status"}));
     assert_eq!(status["decoderEntered"], true, "{status}");
     assert!(
         fixture.path("heic-ready").is_file(),

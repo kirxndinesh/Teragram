@@ -1,6 +1,6 @@
 # Continue Teragram development on Windows
 
-The repository contains the final shared Teragram source, including the gallery cache, bulk-upload refresh recovery, transfer-widget lifecycle, branding and folder-dialog refinements. The published v1.0 macOS app remains unchanged. A Windows installer has **not** been built or run on the current Mac; build and verify it on Windows before publishing it.
+The repository contains the shared Teragram source, including the gallery cache, bulk-upload refresh recovery, transfer-widget lifecycle, branding and folder-dialog refinements. The published v1.0 macOS app remains unchanged. Build and verify Windows installers on Windows before publishing them. The Windows workflow uploads a candidate only after its verification and install-and-launch gates pass.
 
 ## Prerequisites
 
@@ -29,6 +29,11 @@ npm run teragram:dev
 ```
 
 The launcher selects the **Teragram profile** (`com.teragram.app`) and `tg-drive-local` feature. Prefer `teragram:dev` and `teragram:build` over bare `tauri dev/build`, which do not select all of that profile's overrides. An initial native compile can take several minutes.
+
+This is the local-first desktop profile: metadata, settings, cache, transfer state
+and credentials stay on the PC. It has no sponsor or checkout frontend and does
+not require a supporter Worker to start. Telegram login and remote file transfers
+still require Internet access. See [the profile and test scope](TG_DRIVE_LOCAL_PROFILE.md).
 
 Telegram API credentials and sessions are not in the repository. Enter your own API ID/hash and sign in on Windows. Mac session databases, vault material and user media are not copied into the Windows checkout.
 
@@ -60,6 +65,7 @@ npm run build:verify
 npm run i18n:check
 npx playwright install chromium
 npm run teragram:test
+npm run visual:test
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-windows-bundle.ps1
 
 # From app/src-tauri:
