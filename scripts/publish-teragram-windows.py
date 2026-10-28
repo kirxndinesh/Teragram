@@ -34,7 +34,8 @@ def gh(*args):
     result = subprocess.run(["gh", *args], text=True, capture_output=True)
     if result.returncode:
         message = re.sub(r"(https://[^\s?]+)\?[^\s]+", r"\1?[redacted]", result.stderr)
-        raise RuntimeError(message.strip() or "GitHub command failed")
+        operation = " ".join(args)
+        raise RuntimeError(f"GitHub {operation}: {message.strip() or 'command failed'}")
     return result.stdout
 
 
@@ -120,7 +121,7 @@ def verify_existing_tag():
     ).splitlines()
     hashes = {line.split()[1]: line.split()[0] for line in refs}
     target = hashes.get(f"refs/tags/{TAG}^{{}}", hashes.get(f"refs/tags/{TAG}"))
-    require(target is None or target == COMMIT, "Existing tag points to another source commit")
+    require(target == COMMIT, "Publish the verified source tag through Git before creating its release")
 
 
 def publish():
@@ -154,11 +155,13 @@ The installer is unsigned; Windows may display SmartScreen warnings. This is a p
 `SHA256SUMS-windows.txt` and `windows-build-report.json` accompany the exact verified installer. The existing macOS release is unchanged.
 """
         release = api("releases", {
-            "tag_name": TAG, "target_commitish": COMMIT,
+            "tag_name": TAG,
             "name": "Teragram v1.0 — Windows x64 Preview", "body": notes,
             "draft": True, "prerelease": True, "make_latest": "false",
         })
-    require(release["target_commitish"] == COMMIT, "Draft targets another source commit")
+    # The existing tag is authoritative. Avoid requesting creation of a tag at
+    # a historical workflow commit with the Actions token's narrower scope.
+    verify_existing_tag()
     existing = {asset["name"]: asset for asset in release["assets"]}
     require(set(existing) <= FILES, "Draft contains unexpected assets")
     missing = []
